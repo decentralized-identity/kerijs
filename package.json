@@ -1,0 +1,16 @@
+{
+  "name": "kerijs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "blake3": "^2.1.4",
+    "libsodium-wrappers-sumo": "^0.7.6",
+    "utf8": "^3.0.0"
+  }
+}
