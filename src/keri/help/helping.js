@@ -93,11 +93,47 @@ function verify(sig, msg, vk) {
 
 
 
-function verify64u(signature, message, verkey){
-  let  sig = key64uToKey(signature)
-  let  vk = key64uToKey(verkey)
-  let  msg = Buffer.from(message, 'utf-8')
+function verify64u(signature, message, verkey) {
+    let sig = key64uToKey(signature)
+    let vk = key64uToKey(verkey)
+    let msg = Buffer.from(message, 'utf-8')
     return (verify(sig, msg, vk))
 }
 
+
+/**
+ * @description  this method will extract values from labels    
+ * @param {*} ked ked is key event dict
+ * @param {*} labels labels is list of element labels in ked from which 
+ * the values will be extracted
+ */
+function extractValues(ked, labels) {
+    
+    let values = [] 
+    for (let label in labels)
+    extractElementValues(element=ked[label], values=values)
+}
 //setupTmpBaseDir("/home/shivam/Desktop/shivam/projects/Spherity/kerijs/kerijs/testDIr")
+
+function  extractElementValues(element, values){
+
+
+    if(element instanceof Map)
+    {
+       element.forEach(k =>{
+        extractElementValues(element=element[k], values=values)
+       })
+    }
+    else {
+        for (k in element){extractElementValues(element=k, values=values)}
+    }
+
+     extractElementValues(element=ked[label], values=values)
+}
+
+module.exports = {
+    cleanupBaseDir, setupTmpBaseDir,
+    cleanupTmpBaseDir, keyTokey64u, 
+    key64uTokey, verify,
+     verify64u,extractValues,
+}
