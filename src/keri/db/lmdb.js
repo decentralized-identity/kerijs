@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs-extra')
 var os = require('os');
-const MAX_DB_COUNT = 8;
+const MAX_DB_COUNT = 16;
 const DATABASE_DIR_PATH = "/var/keri/db"
 const ALT_DATABASE_DIR_PATH = path.join("~", '.keri/db')
 const DB_KEY_EVENT_LOG_NAME = Buffer.from('kel', 'binary')
@@ -57,4 +57,3 @@ function resolveHome(filepath) {
     return filepath;
 }
 
-setupDbEnv()

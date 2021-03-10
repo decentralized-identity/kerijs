@@ -1,8 +1,5 @@
-const { Crymat } = require('./cryMat')
-const verfer = require('./verfer')
-const { Verfer } = require('./verfer')
-
-
+const { Crymat } = require('./cryMat');
+const derivationCode = require('./derivationCode&Length');
 
 /**
  * @description  A Crymat subclass holding signature with verfer property
@@ -11,25 +8,28 @@ const { Verfer } = require('./verfer')
  * .verfer property to hold Verfer instance of associated verifier public key
  */
 class Sigver extends Crymat {
+  constructor(
+    raw = null,
+    code = derivationCode.twoCharCode.Ed25519,
+    verfer = null,
+    index = 0,
+    qb64 = null,
+  ) {
+    // Assign verfer to .verfer attribute
+    super(raw, qb64, null, code, index);
+    this.getVerfer = verfer;
+  }
 
-  constructor(verfer = null, ...kwg) {
-// Assign verfer to .verfer attribute
-        super(...kwg)
-        this._verfer = verfer
-    }
+  /**
+   * @description  this will return verfer instance
+   */
+  verfer() {
+    return this.getVerfer;
+  }
 
-
- /**
-  * @description  this will return verfer instance 
-  */   
-     getVerfer(){
-        return this._verfer
-    }
-
-    setVerfer(verfer){
-        this._verfer = verfer
-    }
+  setVerfer(verfer) {
+    this.getVerfer = verfer;
+  }
 }
 
-
-module.exports = { Sigver }
+module.exports = { Sigver };

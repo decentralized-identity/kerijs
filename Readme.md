@@ -1,6 +1,6 @@
 # KERI IMPLEMENTATION
 
-This library is the js version of keri .
+    This library is the js version of keri .
 
 
 ## How to run test cases
@@ -8,7 +8,7 @@ This library is the js version of keri .
 Step:1
 
 Go inside folder 
-tests -------> core
+tests/core
 
 Run command:
 ~~~~
