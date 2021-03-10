@@ -1,0 +1,40 @@
+{
+  "name": "kerijs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "blake3": "^2.1.4",
+    "blob": "^0.1.0",
+    "bytearray-node": "^3.2.8",
+    "cbor": "^5.1.0",
+    "collections": "^5.1.11",
+    "filereader": "^0.10.3",
+    "fs-extra": "^9.0.1",
+    "jest-sonar-reporter": "^2.0.0",
+    "js-base64": "^2.5.2",
+    "libsodium-wrappers-sumo": "^0.7.6",
+    "lmdb-store": "^0.3.21",
+    "lodash": "^4.17.20",
+    "msgpack5": "^4.2.1",
+    "multi-regexp2": "git+https://github.com/valoricDe/MultiRegExp2.git",
+    "node-lmdb": "^0.9.4",
+    "nodemon": "^2.0.4",
+    "tmp": "^0.2.1",
+    "urlsafe-base64": "^1.0.0",
+    "utf8": "^3.0.0",
+    "util": "^0.12.3",
+    "xregexp": "^4.4.0"
+  },
+  "devDependencies": {
+    "electron-rebuild": "^2.2.0",
+    "eslint": "^7.18.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-plugin-import": "^2.22.1"
+  }
+}
