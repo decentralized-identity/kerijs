@@ -1,17 +1,14 @@
-// "use strict";
-
 const fs = require('fs-extra');
 const os = require('os');
 const path = require('path');
 const util = require('util');
 const lmdb = require('node-lmdb');
-const _ = require('lodash');
 const { pad } = require('./util');
 
 const encoder = new util.TextEncoder('utf-8');
 const MaxHexDigits = 6;
 const MaxForks = parseInt('f'.repeat(MaxHexDigits), 16); // # 16777215
-class Databaser {
+exports.Databaser = class Databaser {
   // const MAX_DB_COUNT = 16;
   // const DATABASE_DIR_PATH = "/var/keri/db"
   // const ALT_DATABASE_DIR_PATH = path.join("~", '.keri/db')
@@ -29,10 +26,11 @@ class Databaser {
                 headDirPath if any or default headDirPath
      */
   constructor(headDirPath = null, name = 'main', temp = false) {
+    let localHeadDirPath = headDirPath;
     let HeadDirPath = '/var';
     const TailDirPath = 'keri/db';
     const AltHeadDirPath = path.join('~', '.keri/db');
-    let AltTailDirPath = '.keri/db';
+    // const AltTailDirPath = '.keri/db';
     // let ALT_DATABASE_DIR_PATH =
     const MaxNamedDBs = 16;
     try {
@@ -46,8 +44,8 @@ class Databaser {
     } catch (e) {
       console.log('Error while creating directory');
     }
-    if (!headDirPath) { headDirPath = HeadDirPath + '/' + TailDirPath; }
-    let baseDirPath = path.resolve(resolveHome(headDirPath));
+    if (!localHeadDirPath) { localHeadDirPath = `${HeadDirPath}/${TailDirPath}`; }
+    let baseDirPath = path.resolve(resolveHome(localHeadDirPath));
     if (!fs.pathExistsSync(baseDirPath)) {
       try {
         fs.mkdirsSync(baseDirPath, 0o777);
@@ -58,7 +56,8 @@ class Databaser {
           fs.mkdirsSync(baseDirPath, 0o777);
         }
       }
-    } else if (fs.accessSync(baseDirPath, fs.constants.F_OK | fs.constants.W_OK | fs.constants.R_OK)) {
+    } else if (fs.accessSync(baseDirPath, fs.constants.F_OK || fs.constants.W_OK
+      || fs.constants.R_OK)) {
       baseDirPath = AltHeadDirPath;
       baseDirPath = path.resolve(resolveHome(baseDirPath));
       if (!fs.pathExistsSync(baseDirPath)) { fs.mkdirsSync(baseDirPath, 0o777); }
@@ -137,7 +136,6 @@ class Databaser {
     }
   }
 
-
   /**
      * @description  Write serialized bytes val to location key in db
             Overwrites existing val if any
@@ -167,14 +165,15 @@ class Databaser {
 
   updateVal(db, key, value) {
     try {
+      this.key = key;
       const dbi = this.env.openDbi({
         name: db,
         create: true, // will create if database did not exist
       });
 
-      key = encoder.encode(key);
+      this.key = encoder.encode(this.key);
       const txn = this.env.beginTxn();
-      txn.putBinary(dbi, key, value, { keyIsBuffer: true });
+      txn.putBinary(dbi, this.key, value, { keyIsBuffer: true });
       txn.commit();
       dbi.close();
       // this.env.close();
@@ -200,8 +199,6 @@ class Databaser {
       return false;
     }
   }
-
-
 
   getAllVal(db, key) {
     const dbi = this.env.openDbi({
@@ -240,7 +237,8 @@ class Databaser {
   }
 
   /**
-     * @description Write each entry from list of bytes vals to key in db.Adds to existing values at key if any
+     * @description Write each entry from list of bytes vals to key in db.
+     * Adds to existing values at key if any
      */
   putVals(db, key, vals) {
     try {
@@ -254,7 +252,7 @@ class Databaser {
       for (const val in vals) {
         txn.putBinary(dbi, key, vals[val], { keyIsBuffer: true, dupdata: true });
       }
-      // console.log("values successfully added")
+
       txn.commit();
       dbi.close();
       return true;
@@ -263,8 +261,6 @@ class Databaser {
       return false;
     }
   }
-
-
 
   /**
      * @description   Return array of values at key in db .Returns empty array if no entry at key
@@ -285,8 +281,9 @@ class Databaser {
       const vals = [];
 
       if (cursor.goToRange(key)) {
-        for (let found = (cursor.goToRange(key) === key); found !== null; found = cursor.goToNextDup()) {
-          cursor.getCurrentBinary((key, value) => {
+        for (let found = (cursor.goToRange(key) === key); found !== null;
+          found = cursor.goToNextDup()) {
+          cursor.getCurrentBinary((keyParam, value) => {
             vals.push(value);
           });
         }
@@ -319,12 +316,12 @@ class Databaser {
       let response = null;
       const txn = this.env.beginTxn();
       const cursor = new lmdb.Cursor(txn, dbi);
-      let vals = [];
+      // let vals = [];
       if (cursor.goToRange(key) === key) {
         // for (val in cursor.goToNextDup() )
         // yield val
         do {
-          cursor.getCurrentNumber((key, data) => {
+          cursor.getCurrentNumber((keyParam, data) => {
             response = data;
           });
           yield response;
@@ -333,6 +330,7 @@ class Databaser {
 
       txn.commit();
       dbi.close();
+      return true;
     } catch (error) {
       return false;
     }
@@ -356,8 +354,9 @@ class Databaser {
       });
       const cursor = new lmdb.Cursor(txn, dbi, { keyIsBuffer: true });
       if (cursor.goToRange(key)) {
-        for (let found = (cursor.goToRange(key) === key); found !== null; found = cursor.goToNextDup()) {
-          cursor.getCurrentBinary((key, value) => {
+        for (let found = (cursor.goToRange(key) === key); found !== null;
+          found = cursor.goToNextDup()) {
+          cursor.getCurrentBinary(() => {
             count += 1;
           });
         }
@@ -397,7 +396,6 @@ class Databaser {
     }
   }
 
-
   /**
      * @description       Add val bytes as dup to key in db
             Adds to existing values at key if any
@@ -413,7 +411,7 @@ class Databaser {
   addVal(db, key, val) {
     let dups = this.getVals(db, key);
 
-    if (dups.length == 0 || dups == false) {
+    if (dups.length === 0 || dups === false) {
       dups = [];
     }
     const dbi = this.env.openDbi({
@@ -423,11 +421,12 @@ class Databaser {
     });
     try {
       const txn = this.env.beginTxn();
-      if (dups.length == 0) {
-        var counter = 0;
+      let counter;
+      if (dups.length === 0) {
+        counter = 0;
       } else {
-        for (let i = 0; i < dups.length; i++) {
-          if (dups[i].toString() == val.toString()) {
+        for (let i = 0; i < dups.length; i + 1) {
+          if (dups[i].toString() === val.toString()) {
             counter = 1;
           } else {
             counter = 0;
@@ -435,7 +434,7 @@ class Databaser {
         }
       }
 
-      if (counter == 0) {
+      if (counter === 0) {
         txn.putBinary(dbi, key, Buffer.from(val, 'binary'), { overwrite: false, keyIsBuffer: true });
       }
       txn.commit();
@@ -469,22 +468,23 @@ class Databaser {
 
       const txn = this.env.beginTxn({ buffers: true });
       const cursor = new lmdb.Cursor(txn, dbi, { keyIsBuffer: true });
-      const vals_ = [];
-      const key_ = [];
+      const valsArray = [];
+      const keyArray = [];
       if (cursor.goToRange(key)) {
-        for (let found = (cursor.goToRange(key) === key); found !== null; found = cursor.goToNextDup()) {
-          cursor.getCurrentBinary((key, data) => {
-            data = data.slice(7, data.length);
-            key_.push(key);
-            vals_.push(data);
+        for (let found = (cursor.goToRange(key) === key); found !== null;
+          found = cursor.goToNextDup()) {
+          cursor.getCurrentBinary((keyParam, data) => {
+            this.data = data;
+            this.data = this.data.slice(7, this.data.length);
+            keyArray.push(keyParam);
+            valsArray.push(this.data);
           });
         }
       }
 
-
       txn.commit();
       dbi.close();
-      return vals_;
+      return valsArray;
     } catch (error) {
       console.log(' ERROR :', error);
       return false;
@@ -503,12 +503,12 @@ class Databaser {
   async addIOVal(db, key, vals) {
     let dups = this.getIOValues(db, key);
 
-    if (dups == false) {
+    if (dups.toString === 'false') {
       dups = [];
     }
 
-    for (let i = 0; i < dups.length; i++) {
-      if (dups[i].toString() == vals.toString()) {
+    for (let i = 0; i < dups.length; i + 1) {
+      if (dups[i].toString() === vals.toString()) {
         return false;
       }
     }
@@ -527,7 +527,6 @@ class Databaser {
       let val = null;
       let countPad = 0;
       if (count > MaxForks) { throw new Error(`Too many recovery forks at key = ${key}`); }
-
 
       countPad = pad(count, 6);
       countPad += '.';
@@ -563,10 +562,9 @@ class Databaser {
      */
   putIOVals(db, key, vals) {
     let dups = this.getIOValues(db, key);
-    if (dups == false) {
+    if (dups.toString() === 'false') {
       dups = [];
     }
-
 
     try {
       const dbi = this.env.openDbi({
@@ -587,7 +585,7 @@ class Databaser {
         }
       }
       if (!dups.includes(vals)) {
-        if (count > MaxForks) {throw new Error(`Too many recovery forks at key = ${key}`); }
+        if (count > MaxForks) { throw new Error(`Too many recovery forks at key = ${key}`); }
 
         countPad = pad(count, 6);
         countPad += '.';
@@ -633,13 +631,14 @@ class Databaser {
 
     try {
       const txn = this.env.beginTxn({ readOnly: true });
-      const cursor = new lmdb.Cursor(txn, dbi, { keyIsBuffer: true, dupdata: true});
+      const cursor = new lmdb.Cursor(txn, dbi, { keyIsBuffer: true, dupdata: true });
       let vals = null;
 
       cursor.goToKey(key).toString();
       try {
-        for (let found = (cursor.goToKey(key) === key); found !== null; found = cursor.goToLastDup()) {
-          cursor.getCurrentBinary((key, data) => {
+        for (let found = (cursor.goToKey(key) === key); found !== null;
+          found = cursor.goToLastDup()) {
+          cursor.getCurrentBinary((keyParam, data) => {
             vals = data.slice(7, data.length);
           });
         }
@@ -656,7 +655,6 @@ class Databaser {
       return false;
     }
   }
-
 
   /**
      * @description Return count of dup values at key in db, or zero otherwise
@@ -675,10 +673,10 @@ class Databaser {
       const cursor = new lmdb.Cursor(txn, dbi, { keyIsBuffer: true });
       let count = 0;
 
-
       if (cursor.goToRange(key)) {
-        for (let found = (cursor.goToRange(key) === key); found !== null; found = cursor.goToNextDup()) {
-          cursor.getCurrentBinary((key, data) => {
+        for (let found = (cursor.goToRange(key) === key); found !== null;
+          found = cursor.goToNextDup()) {
+          cursor.getCurrentBinary(() => {
             count += 1;
           });
         }
@@ -702,7 +700,7 @@ class Databaser {
       });
 
       const txn = this.env.beginTxn();
-      let cursor = new lmdb.Cursor(txn, dbi, { keyIsBuffer: true });
+      // let cursor = new lmdb.Cursor(txn, dbi, { keyIsBuffer: true });
 
       txn.del(dbi, key);
       txn.commit();
@@ -732,26 +730,27 @@ class Databaser {
      * @param {*} pre   pre is bytes of itdentifier prefix prepended to sn in key
                     within sub db's keyspace
      */
-  *getIoValsAllPreIter(db, pre) {
+  * etIoValsAllPreIter(db, pre) {
     try {
       const dbi = this.env.openDbi({
         name: db,
       });
-      let key = snkey(pre, 0);
+      let key = snKey(pre, 0);
       const txn = this.env.beginTxn();
       const cursor = new lmdb.Cursor(txn, dbi, { keyIsBuffer: true });
       const cnt = 0;
       let result = false;
       if (cursor.goToRange(key) === key) {
         do {
-          cursor.getCurrentNumber((key, data) => {
+          cursor.getCurrentNumber((keyParam, data) => {
             result = data.slice(7, data.length);
           });
 
           yield result;
-          key = snkey(pre, cnt + 1);
+          key = snKey(pre, cnt + 1);
         } while (cursor.goToNextDup());
       }
+      return true;
     } catch (error) {
       return false;
     }
@@ -776,17 +775,18 @@ class Databaser {
                     within sub db's keyspace
      */
 
-  *getIoValsLastAllPreIter(dbi, pre) {
+  * getIoValsLastAllPreIter(dbi, pre) {
     try {
-      let key = snkey(pre, 0);
+      let key = snKey(pre, 0);
       const txn = this.env.beginTxn();
       const cursor = new lmdb.Cursor(txn, dbi);
       let result = false;
-        const cnt = 0;
+      const cnt = 0;
+
       if (cursor.goToRange(key) === key) {
         do {
           cursor.goToLast();
-          cursor.getCurrentString((key, data) => {
+          cursor.getCurrentString((keyParam, data) => {
             result = data.slice(7, data.length);
           });
           // cursor.getCurrentNumber(function(key, data) {
@@ -796,6 +796,7 @@ class Databaser {
           key = snKey(pre, cnt + 1);
         } while (cursor.goToNextDup());
       }
+      return true;
     } catch (error) {
       return false;
     }
@@ -809,16 +810,71 @@ function resolveHome(filepath) {
   return filepath;
 }
 
-function dgkey(pre, dig) {
-  if (pre) {
-    pre = Buffer.from(pre, 'binary');
+/**
+ * Returns bytes DB key from concatenation of '.' with qualified Base64 prefix
+    bytes pre and qualified Base64 bytes digest of serialized event
+    If pre or dig are str then converts to bytes
+ * @param {*} pre 
+ * @param {*} dig 
+ * @returns 
+ */
+module.exports.dgkey = (pre, dig) => {
+  this.pre = pre;
+  this.dig = dig;
+
+  if (typeof this.pre === 'string') {
+    this.pre = Buffer.from(this.pre, 'binary'); // convert str to bytes 
   }
-  if (dig) {
-    dig = Buffer.from(dig, 'binary');
+  if (typeof this.dig === 'string') {
+    this.dig = Buffer.from(this.dig, 'binary'); // convert str to bytes
+  }
+  const dotBuf = Buffer.from('.', 'binary');
+
+  return Buffer.concat([this.pre, dotBuf, this.dig]);
+}
+
+/**
+ * @description Returns bytes DB key from concatenation with '.' of qualified Base64 prefix
+    bytes pre and int ordinal number of event, such as sequence number or first
+    seen order number.
+ * @param {*} pre 
+ * @param {*} sn 
+ * @returns 
+ */
+module.exports.onKey = (pre, sn) => {
+  this.pre = pre;
+  this.sn = pad(sn, 32);
+  this.sn = Buffer.from(this.sn, 'binary');
+
+  if (typeof this.pre === 'string') {
+    this.pre = Buffer.from(this.pre, 'binary'); // convert str to bytes 
   }
 
   const dotBuf = Buffer.from('.', 'binary');
-  return Buffer.concat([pre, dotBuf, dig]);
+  return Buffer.concat([this.pre, dotBuf, this.sn]);
+}
+
+/**
+ * @description Returns bytes DB key from concatenation of '|' qualified Base64 prefix
+    bytes pre and bytes dts datetime string of extended tz aware ISO8601
+    datetime of event
+ * @param {*} pre 
+ * @param {*} dts = '2021-02-13T19:16:50.750302+00:00'
+ * @returns 
+ */
+module.exports.dtKey = (pre, dts) => {
+  this.pre = pre;
+  this.dts = dts;
+
+  if (typeof this.pre === 'string') {
+    this.pre = Buffer.from(this.pre, 'binary'); // convert str to bytes 
+  }
+  if (typeof this.dts === 'string') {
+    this.dts = Buffer.from(this.dts, 'binary'); // convert str to bytes
+  }
+  const pipeBuf = Buffer.from('|', 'binary');
+
+  return Buffer.concat([this.pre, pipeBuf, this.dts]);
 }
 
 /**
@@ -826,15 +882,88 @@ function dgkey(pre, dig) {
     bytes pre and int sn (sequence number) of event
  * @param {*} pre
  * @param {*} sn
+ * @returns
  */
-function snkey(pre, sn) {
-  if (pre) { pre = Buffer.from(pre, 'binary');}
-  sn = pad(sn, 32);
-  sn = '.' + sn;
-  sn = Buffer.from(sn, 'binary');
-  const arr = [pre, sn];
+module.exports.snKey = (pre, sn) => {
+  this.pre = pre;
+  this.sn = sn;
+
+  if (this.pre) { this.pre = Buffer.from(this.pre, 'binary'); }
+  this.sn = pad(this.sn, 32);
+  this.sn = `.${this.sn}`;
+  this.sn = Buffer.from(this.sn, 'binary');
+  const arr = [this.pre, this.sn];
 
   return Buffer.concat(arr);
 }
 
-module.exports = { snkey, dgkey, Databaser };
+/**
+ * @description  Returns tuple of pre and either dig or on, sn, fn str or dts datetime str by
+    splitting key at bytes sep
+    Accepts either bytes or str key and returns same type
+    Raises ValueError if key does not split into exactly two elements
+ * @param {*} key: key is database key with split at sep
+ * @param {*} sep: sep is bytes separator character. default is b'.'
+ */
+module.exports.splitKey = (key, sep = '.') => {
+  this.key = key;
+  this.sep = Buffer.from(sep, 'binary');
+
+  if (Buffer.isBuffer(this.key)) {
+    this.key = this.key.toString();
+  }
+  // str not bytes
+  if (typeof this.key === "string") {
+    if (typeof this.sep !== "string")  // make sep match bytes or str
+      this.sep = this.sep.toString();
+  }
+
+  const splits = this.key.split(this.sep);
+  if (splits.length != 2)
+    throw Error(`Unsplittable key = ${this.key}`);
+  return splits;
+}
+
+/**
+ * @description Returns list of pre and int on from key
+    Accepts either bytes or str key
+    ordinal number  appears in key in hex format
+ * @param {*} key 
+ * @returns 
+ */
+module.exports.splitKeyON = (key) => {
+  this.key = key;
+
+  if (Buffer.isBuffer(this.key)) {
+    this.key = this.key.toString();
+  }
+
+  const result = this.splitKey(this.key)
+  if (result[1] && result[1].length) {
+    result[1] = parseInt(result[1], 16);
+  }
+  return result;
+}
+
+/**
+ * @description Returns list of pre and dts converted to datetime from key
+    dts is TZ aware Iso8601 '2021-02-13T19:16:50.750302+00:00'
+ * @param {*} key: Accepts either bytes or str key
+ * @returns
+ */
+module.exports.splitKeyDT = (key) => {
+  this.key = key;
+  const sep = Buffer.from('|', 'binary');
+
+  if (Buffer.isBuffer(this.key)) {
+    this.key = this.key.toString();
+    console.log('this.key >>>>> ', this.key)
+  }
+
+  const result = this.splitKey(this.key, sep)
+
+  if (result[1] && result[1].length && typeof this.sep !== "string")  // make sep match bytes or str
+    result[1] = result[1].toString().toISOString();
+
+  return result;
+}
