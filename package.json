@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint --ext .js --ignore-path .gitignore ./src/keri/db/database.js",
+    "test": "node ./tests/core/test_db.js"
   },
   "author": "",
   "license": "ISC",
@@ -20,8 +21,8 @@
     "js-base64": "^2.5.2",
     "libsodium-wrappers-sumo": "^0.7.6",
     "lmdb-store": "^0.3.21",
-    "lodash": "^4.17.20",
-    "msgpack5": "^4.2.1",
+    "lodash": "^4.17.21",
+    "msgpack5": "^4.5.1",
     "multi-regexp2": "git+https://github.com/valoricDe/MultiRegExp2.git",
     "node-lmdb": "^0.9.4",
     "nodemon": "^2.0.4",
@@ -33,8 +34,8 @@
   },
   "devDependencies": {
     "electron-rebuild": "^2.2.0",
-    "eslint": "^7.18.0",
+    "eslint": "^7.27.0",
     "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.22.1"
+    "eslint-plugin-import": "^2.23.3"
   }
 }
