@@ -24,7 +24,7 @@
     "lodash": "^4.17.21",
     "msgpack5": "^4.5.1",
     "multi-regexp2": "git+https://github.com/valoricDe/MultiRegExp2.git",
-    "node-lmdb": "^0.9.4",
+    "node-lmdb": "^0.9.7",
     "nodemon": "^2.0.4",
     "tmp": "^0.2.1",
     "urlsafe-base64": "^1.0.0",
